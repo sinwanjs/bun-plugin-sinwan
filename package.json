@@ -1,0 +1,48 @@
+{
+  "name": "bun-plugin-sinwan",
+  "version": "0.1.1",
+  "description": "bun plugin for sinwan library",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "keywords": [
+    "sinwan",
+    "reactive",
+    "ui",
+    "ssr",
+    "hydration",
+    "jsx",
+    "signals",
+    "components",
+    "framework",
+    "bun"
+  ],
+  "author": "Mohammed Ben Cheikh",
+  "license": "MIT",
+  "bugs": "https://github.com/sinwanjs/sinwan/issues",
+  "homepage": "https://sinwanjs.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sinwanjs/sinwan",
+    "directory": "packages/bun-plugin-sinwan"
+  },
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "sinwan": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "bun run build.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "dependencies": {
+    "sinwan-compiler": "file:../sinwan-compiler"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
