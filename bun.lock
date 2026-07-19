@@ -5,7 +5,7 @@
     "": {
       "name": "bun-plugin-sinwan",
       "dependencies": {
-        "sinwan-compiler": "^0.2.0",
+        "sinwan-compiler": "^0.2.2",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -97,7 +97,7 @@
 
     "semver": ["semver@6.3.1", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA=="],
 
-    "sinwan-compiler": ["sinwan-compiler@0.2.0", "", { "dependencies": { "@babel/core": "^7.24.0", "@babel/generator": "^7.24.0", "@babel/parser": "^7.24.0", "@babel/traverse": "^7.24.0", "@babel/types": "^7.24.0" }, "peerDependencies": { "typescript": "^5" }, "bin": { "sinwan": "dist/cli.js" } }, "sha512-a66GYxxo8VtJRV6R07C13oHkgjRZ8PQsGO9KXDF3rQ6hcPW4laYG1t1WlQxrV1GopIejC7LMifZNUPqq4en14A=="],
+    "sinwan-compiler": ["sinwan-compiler@0.2.2", "", { "dependencies": { "@babel/core": "^7.24.0", "@babel/generator": "^7.24.0", "@babel/parser": "^7.24.0", "@babel/traverse": "^7.24.0", "@babel/types": "^7.24.0" }, "peerDependencies": { "typescript": "^5" }, "bin": { "sinwan": "dist/cli.js" } }, "sha512-mxwLmTGRBx2VHJN6+5lW5gjcbQIYLlqPcl7rjchqMOMsDE2zWgpr8/2OSGbt1Vh6QHtO/ca88X1Sw1tp7VYeEQ=="],
 
     "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 

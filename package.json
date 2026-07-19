@@ -40,7 +40,7 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "sinwan-compiler": "^0.2.0"
+    "sinwan-compiler": "^0.2.2"
   },
   "peerDependencies": {
     "typescript": "^5"
