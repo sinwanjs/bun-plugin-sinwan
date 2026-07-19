@@ -1,7 +1,7 @@
 {
   "name": "bun-plugin-sinwan",
   "version": "0.1.1",
-  "description": "bun plugin for sinwan library",
+  "description": "Bun plugin for sinwan",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -20,12 +20,11 @@
   ],
   "author": "Mohammed Ben Cheikh",
   "license": "MIT",
-  "bugs": "https://github.com/sinwanjs/sinwan/issues",
+  "bugs": "https://github.com/sinwanjs/bun-plugin-sinwan/issues",
   "homepage": "https://sinwanjs.com",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sinwanjs/sinwan",
-    "directory": "packages/bun-plugin-sinwan"
+    "url": "https://github.com/sinwanjs/bun-plugin-sinwan"
   },
   "files": [
     "dist"
@@ -40,7 +39,7 @@
     "@types/bun": "latest"
   },
   "dependencies": {
-    "sinwan-compiler": "file:../sinwan-compiler"
+    "sinwan-compiler": "^0.1.0"
   },
   "peerDependencies": {
     "typescript": "^5"
