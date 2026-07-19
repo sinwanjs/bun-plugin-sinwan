@@ -1,6 +1,6 @@
 {
   "name": "bun-plugin-sinwan",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "description": "Bun plugin for sinwan",
   "type": "module",
   "main": "./dist/index.js",
