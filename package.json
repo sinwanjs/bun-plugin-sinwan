@@ -36,7 +36,8 @@
     "build": "bun run build.ts"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "typescript": "^5"
   },
   "dependencies": {
     "sinwan-compiler": "^0.1.0"
