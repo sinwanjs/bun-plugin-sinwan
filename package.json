@@ -1,6 +1,6 @@
 {
   "name": "bun-plugin-sinwan",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Bun plugin for sinwan",
   "type": "module",
   "main": "./dist/index.js",
@@ -40,7 +40,7 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "sinwan-compiler": "^0.2.2"
+    "sinwan-compiler": "^0.2.3"
   },
   "peerDependencies": {
     "typescript": "^5"
