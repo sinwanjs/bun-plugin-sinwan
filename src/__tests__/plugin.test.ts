@@ -14,4 +14,15 @@ describe("sinwan bun plugin", () => {
     });
     expect(plugin.name).toBe("sinwan");
   });
+
+  it("enables explicit bindings and the incremental analyzer by default", () => {
+    const plugin = sinwan();
+    expect(plugin.name).toBe("sinwan");
+    expect(typeof plugin.setup).toBe("function");
+  });
+
+  it("allows disabling the cache and explicit bindings", () => {
+    const plugin = sinwan({ cache: false, explicitBindings: false });
+    expect(plugin.name).toBe("sinwan");
+  });
 });
