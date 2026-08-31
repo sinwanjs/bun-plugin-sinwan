@@ -1,4 +1,6 @@
 import { describe, it, expect } from "bun:test";
+import * as fs from "fs";
+import * as path from "path";
 import { sinwan } from "../index";
 
 describe("sinwan bun plugin", () => {
@@ -24,5 +26,152 @@ describe("sinwan bun plugin", () => {
   it("allows disabling the cache and explicit bindings", () => {
     const plugin = sinwan({ cache: false, explicitBindings: false });
     expect(plugin.name).toBe("sinwan");
+  });
+
+  it("returns errors instead of throwing on invalid JSX syntax", async () => {
+    const plugin = sinwan({ cache: false });
+    let onLoadFn: ((args: { path: string }) => Promise<any>) | null = null;
+    const fakeBuild = {
+      config: {},
+      onLoad(_filter: any, fn: (args: { path: string }) => Promise<any>) {
+        onLoadFn = fn;
+      },
+    };
+    plugin.setup(fakeBuild);
+    expect(onLoadFn).not.toBeNull();
+
+    const tmpDir = fs.mkdtempSync(path.join(import.meta.dir, ".tmp-"));
+    const tmpFile = path.join(tmpDir, "App.tsx");
+    // Unclosed/invalid JSX — Babel parser will throw.
+    fs.writeFileSync(tmpFile, "const App = () => (<div></span>;");
+
+    try {
+      const result = await onLoadFn!({ path: tmpFile });
+      expect(result.errors).toBeInstanceOf(Array);
+      expect(result.errors.length).toBeGreaterThanOrEqual(1);
+      expect(typeof result.errors[0].text).toBe("string");
+      expect(result.errors[0].file).toBe(tmpFile);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true });
+    }
+  });
+
+  it("returns valid transformed code for correct JSX", async () => {
+    const plugin = sinwan({ cache: false });
+    let onLoadFn: ((args: { path: string }) => Promise<any>) | null = null;
+    const fakeBuild = {
+      config: {},
+      onLoad(_filter: any, fn: (args: { path: string }) => Promise<any>) {
+        onLoadFn = fn;
+      },
+    };
+    plugin.setup(fakeBuild);
+    expect(onLoadFn).not.toBeNull();
+
+    const tmpDir = fs.mkdtempSync(path.join(import.meta.dir, ".tmp-"));
+    const tmpFile = path.join(tmpDir, "App.tsx");
+    fs.writeFileSync(tmpFile, "const App = () => <div>hello</div>;");
+
+    try {
+      const result = await onLoadFn!({ path: tmpFile });
+      expect(result.contents).toBeDefined();
+      expect(typeof result.contents).toBe("string");
+      expect(result.loader).toBe("tsx");
+      expect(result.errors).toBeUndefined();
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true });
+    }
+  });
+
+  it("initializes the analyzer cache when cache is enabled as boolean", () => {
+    const plugin = sinwan({ cache: true });
+    let onLoadFn: ((args: { path: string }) => Promise<any>) | null = null;
+    const fakeBuild = {
+      config: {},
+      onLoad(_filter: any, fn: (args: { path: string }) => Promise<any>) {
+        onLoadFn = fn;
+      },
+    };
+    // setup() runs the cache init block (lines 74-93).
+    plugin.setup(fakeBuild);
+    expect(onLoadFn).not.toBeNull();
+  });
+
+  it("initializes the analyzer cache when cache is enabled as object", () => {
+    const tmpDir = fs.mkdtempSync(path.join(import.meta.dir, ".tmp-"));
+    try {
+      const plugin = sinwan({
+        cache: {
+          root: tmpDir,
+          tsConfigPath: path.join(tmpDir, "tsconfig.json"),
+        },
+      });
+      let onLoadFn: ((args: { path: string }) => Promise<any>) | null = null;
+      const fakeBuild = {
+        config: {},
+        onLoad(_filter: any, fn: (args: { path: string }) => Promise<any>) {
+          onLoadFn = fn;
+        },
+      };
+      plugin.setup(fakeBuild);
+      expect(onLoadFn).not.toBeNull();
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true });
+    }
+  });
+
+  it("catches cache.update errors and still returns transform errors", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(import.meta.dir, ".tmp-"));
+    try {
+      const plugin = sinwan({ cache: { root: tmpDir } });
+      let onLoadFn: ((args: { path: string }) => Promise<any>) | null = null;
+      const fakeBuild = {
+        config: {},
+        onLoad(_filter: any, fn: (args: { path: string }) => Promise<any>) {
+          onLoadFn = fn;
+        },
+      };
+      plugin.setup(fakeBuild);
+      expect(onLoadFn).not.toBeNull();
+
+      const tmpFile = path.join(tmpDir, "App.tsx");
+      // Invalid JSX — both cache.update (analyzeModule) and transformJSX
+      // will throw. The cache.update catch must swallow the error (line
+      // 106-108) and the transform catch must return errors.
+      fs.writeFileSync(tmpFile, "const App = () => (<div></span>;");
+
+      const result = await onLoadFn!({ path: tmpFile });
+      expect(result.errors).toBeInstanceOf(Array);
+      expect(result.errors.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true });
+    }
+  });
+
+  it("transforms valid JSX with cache enabled", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(import.meta.dir, ".tmp-"));
+    try {
+      const plugin = sinwan({ cache: { root: tmpDir } });
+      let onLoadFn: ((args: { path: string }) => Promise<any>) | null = null;
+      const fakeBuild = {
+        config: {},
+        onLoad(_filter: any, fn: (args: { path: string }) => Promise<any>) {
+          onLoadFn = fn;
+        },
+      };
+      plugin.setup(fakeBuild);
+      expect(onLoadFn).not.toBeNull();
+
+      const tmpFile = path.join(tmpDir, "App.tsx");
+      fs.writeFileSync(tmpFile, "const App = () => <div>hello</div>;");
+
+      const result = await onLoadFn!({ path: tmpFile });
+      expect(result.contents).toBeDefined();
+      expect(typeof result.contents).toBe("string");
+      expect(result.loader).toBe("tsx");
+      expect(result.errors).toBeUndefined();
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true });
+    }
   });
 });

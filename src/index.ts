@@ -93,28 +93,49 @@ export function sinwan(options: SinwanBunOptions = {}) {
         });
       }
 
-      // Bun's onLoad handles JSX transformation
+      // Bun's onLoad handles JSX transformation.
+      //
+      // Transform errors are caught and returned via Bun's `errors` field
+      // instead of throwing. This keeps the dev server alive when a template
+      // has a syntax/compile error, so the HMR WebSocket stays connected and
+      // the client automatically picks up the fix without a manual refresh.
       build.onLoad({ filter: /\.[tj]sx$/ }, async (args: { path: string }) => {
         const code = await (globalThis as any).Bun.file(args.path).text();
 
         if (cache) {
-          cache.update(args.path, code);
+          try {
+            cache.update(args.path, code);
+          } catch (err) {
+            // Analyzer errors must never crash the server; fall through to
+            // transform with whatever metadata is already cached.
+          }
         }
 
-        // JSX compilation with hoisting
-        const transformed = transformJSX(code, args.path, {
-          hoist: opts.hoist,
-          explicitBindings: opts.explicitBindings,
-          dev: process.env.NODE_ENV !== "production",
-          analyze: opts.analyze,
-          analyzeMetadata: cache ? cache.reactiveProps : undefined,
-          resolveImport: cache ? cache.resolve : undefined,
-        });
+        try {
+          const transformed = transformJSX(code, args.path, {
+            hoist: opts.hoist,
+            explicitBindings: opts.explicitBindings,
+            dev: process.env.NODE_ENV !== "production",
+            analyze: opts.analyze,
+            analyzeMetadata: cache ? cache.reactiveProps : undefined,
+            resolveImport: cache ? cache.resolve : undefined,
+          });
 
-        return {
-          contents: transformed.code,
-          loader: args.path.endsWith("x") ? "tsx" : "ts",
-        };
+          return {
+            contents: transformed.code,
+            loader: args.path.endsWith("x") ? "tsx" : "ts",
+          };
+        } catch (err: any) {
+          return {
+            errors: [
+              {
+                text: err?.message ?? String(err),
+                file: args.path,
+              },
+            ],
+            loader: args.path.endsWith("x") ? "tsx" : "ts",
+          };
+        }
       });
     },
   };
