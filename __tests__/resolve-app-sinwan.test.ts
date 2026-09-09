@@ -3,7 +3,7 @@ import {
   bunResolveSync,
   isSinwanSpecifier,
   resolveAppSinwan,
-} from "../resolve-app-sinwan.ts";
+} from "../src/resolve-app-sinwan.ts";
 
 describe("isSinwanSpecifier", () => {
   it("matches the runtime package and its subpaths", () => {

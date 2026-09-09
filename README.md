@@ -20,7 +20,7 @@ await Bun.build({
 });
 ```
 
-The plugin automatically configures Bun's JSX runtime to `automatic` with `sinwan` as the import source.
+Configure JSX in the app (`tsconfig.json` `jsx` / `jsxImportSource`, or Bun's equivalent). The plugin does not set Bun's JSX runtime.
 
 ## Options
 
@@ -39,21 +39,15 @@ sinwan({
     cachePath: "./.sinwan/cache.json",
     bunfigPath: "./bunfig.toml",
   },
-  // Override JSX runtime config
-  jsx: {
-    runtime: "automatic",
-    importSource: "sinwan",
-  },
 });
 ```
 
-| Option             | Type                                                            | Default                                            | Description                                           |
-| ------------------ | --------------------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------- |
-| `hoist`            | `boolean`                                                       | `true`                                             | Hoist static DOM to module-level templates            |
-| `explicitBindings` | `boolean`                                                       | `false`                                            | Emit compiler-driven binding descriptors              |
-| `analyze`          | `string`                                                        | `undefined`                                        | Path to reactive-props metadata from `sinwan analyze` |
-| `cache`            | `boolean \| SinwanCacheOptions`                                 | `false`                                            | Enable incremental in-memory cross-file analysis      |
-| `jsx`              | `{ runtime?: "automatic" \| "classic"; importSource?: string }` | `{ runtime: "automatic", importSource: "sinwan" }` | JSX runtime configuration                             |
+| Option             | Type                            | Default     | Description                                           |
+| ------------------ | ------------------------------- | ----------- | ----------------------------------------------------- |
+| `hoist`            | `boolean`                       | `true`      | Hoist static DOM to module-level templates            |
+| `explicitBindings` | `boolean`                       | `false`     | Emit compiler-driven binding descriptors              |
+| `analyze`          | `string`                        | `undefined` | Path to reactive-props metadata from `sinwan analyze` |
+| `cache`            | `boolean \| SinwanCacheOptions` | `false`     | Enable incremental in-memory cross-file analysis      |
 
 ## How it works
 

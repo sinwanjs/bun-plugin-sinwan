@@ -15,13 +15,12 @@ export {
 export type { SpecifierResolver } from "./resolve-app-sinwan.ts";
 
 interface BunOnLoadResult {
-  contents?: string;
-  loader?: string;
+  contents: string;
+  loader?: "js" | "jsx" | "ts" | "tsx";
   errors?: { text: string; file: string }[];
 }
 
 interface BunPluginBuild {
-  config?: Record<string, unknown>;
   onLoad(
     options: { filter: RegExp },
     callback: (args: { path: string }) => Promise<BunOnLoadResult>,
@@ -60,24 +59,14 @@ export interface SinwanBunOptions {
    * to configure root/paths and persistent cache).
    */
   cache?: SinwanCacheOptions;
-  /** JSX configuration for automatic runtime */
-  jsx?: {
-    runtime?: "automatic" | "classic";
-    importSource?: string;
-  };
 }
 
 const DEFAULT_OPTIONS: Required<
   Pick<SinwanBunOptions, "hoist" | "explicitBindings" | "cache">
-> &
-  Pick<SinwanBunOptions, "jsx"> = {
+> = {
   hoist: true,
   explicitBindings: false,
   cache: true,
-  jsx: {
-    runtime: "automatic",
-    importSource: "sinwan",
-  },
 };
 
 /**
@@ -93,12 +82,6 @@ export function sinwan(options: SinwanBunOptions = {}) {
   return {
     name: "sinwan",
     setup(build: BunPluginBuild) {
-      // Configure JSX settings with defaults
-      build.config = {
-        ...build.config,
-        jsx: opts.jsx,
-      };
-
       const appRoot =
         typeof opts.cache === "object" ? opts.cache.root : process.cwd();
       build.onResolve?.({ filter: SINWAN_SPECIFIER }, (args) => {
@@ -164,10 +147,12 @@ export function sinwan(options: SinwanBunOptions = {}) {
             loader: args.path.endsWith("x") ? "tsx" : "ts",
           };
         } catch (err: unknown) {
+          const text = err instanceof Error ? err.message : String(err);
           return {
+            contents: `throw new Error(${JSON.stringify(text)});`,
             errors: [
               {
-                text: err instanceof Error ? err.message : String(err),
+                text,
                 file: args.path,
               },
             ],
@@ -176,7 +161,7 @@ export function sinwan(options: SinwanBunOptions = {}) {
         }
       });
     },
-  };
+  } satisfies Bun.BunPlugin;
 }
 
 export { transformJSX };

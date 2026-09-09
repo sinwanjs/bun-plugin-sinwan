@@ -1,13 +1,29 @@
 import { describe, it, expect } from "bun:test";
 import * as fs from "fs";
 import * as path from "path";
-import { sinwan } from "../index";
+import { sinwan } from "../src/index.ts";
 
 describe("sinwan bun plugin", () => {
   it("can be created with cache enabled", () => {
     const plugin = sinwan({ cache: true });
     expect(plugin.name).toBe("sinwan");
     expect(typeof plugin.setup).toBe("function");
+  });
+
+  it("is assignable to Bun.BunPlugin", () => {
+    const plugin: Bun.BunPlugin = sinwan();
+    expect(plugin.name).toBe("sinwan");
+    expect(typeof plugin.setup).toBe("function");
+  });
+
+  it("does not write jsx settings onto the bun build config", () => {
+    const plugin = sinwan();
+    const fakeBuild = {
+      config: {},
+      onLoad() {},
+    };
+    plugin.setup(fakeBuild);
+    expect(fakeBuild.config).toEqual({});
   });
 
   it("can be created with a custom cache root", () => {
@@ -51,6 +67,7 @@ describe("sinwan bun plugin", () => {
       expect(result.errors.length).toBeGreaterThanOrEqual(1);
       expect(typeof result.errors[0].text).toBe("string");
       expect(result.errors[0].file).toBe(tmpFile);
+      expect(result.contents).toContain("throw new Error(");
     } finally {
       fs.rmSync(tmpDir, { recursive: true });
     }
@@ -143,6 +160,7 @@ describe("sinwan bun plugin", () => {
       const result = await onLoadFn!({ path: tmpFile });
       expect(result.errors).toBeInstanceOf(Array);
       expect(result.errors.length).toBeGreaterThanOrEqual(1);
+      expect(result.contents).toContain("throw new Error(");
     } finally {
       fs.rmSync(tmpDir, { recursive: true });
     }
@@ -190,7 +208,6 @@ describe("sinwan bun plugin", () => {
         | ((args: { path: string }) => { path: string } | undefined)
         | null = null;
       plugin.setup({
-        config: {},
         onLoad() {},
         onResolve(_options, fn) {
           resolveFn = fn;
