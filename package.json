@@ -1,6 +1,6 @@
 {
   "name": "bun-plugin-sinwan",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Bun plugin for sinwan",
   "author": "Mohammed Ben Cheikh",
   "license": "MIT",
@@ -41,9 +41,10 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "sinwan-compiler": "^0.2.5"
+    "sinwan-compiler": ">=0.2.5 <1.0.0"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^5",
+    "sinwan-compiler": ">=0.2.5 <1.0.0"
   }
 }

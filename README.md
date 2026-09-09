@@ -22,6 +22,14 @@ await Bun.build({
 
 Configure JSX in the app (`tsconfig.json` `jsx` / `jsxImportSource`, or Bun's equivalent). The plugin does not set Bun's JSX runtime.
 
+## Compiler updates
+
+The plugin depends on `sinwan-compiler` with `>=0.2.5 <1.0.0` and does not bundle it. Publishing a new 0.x compiler does **not** require a plugin release.
+
+- New installs resolve the newest compatible compiler automatically.
+- Existing apps keep a lockfile pin until they run `bun update sinwan-compiler`.
+- Republish this plugin only when the plugin API itself changes, or when `sinwan-compiler` reaches 1.0.
+
 ## Options
 
 ```ts
