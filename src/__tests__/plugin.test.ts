@@ -33,7 +33,7 @@ describe("sinwan bun plugin", () => {
     let onLoadFn: ((args: { path: string }) => Promise<any>) | null = null;
     const fakeBuild = {
       config: {},
-      onLoad(_filter: any, fn: (args: { path: string }) => Promise<any>) {
+      onLoad(_filter: { filter: RegExp }, fn: (args: { path: string }) => Promise<unknown>) {
         onLoadFn = fn;
       },
     };
@@ -172,6 +172,36 @@ describe("sinwan bun plugin", () => {
       expect(result.errors).toBeUndefined();
     } finally {
       fs.rmSync(tmpDir, { recursive: true });
+    }
+  });
+
+  it("registers onResolve that pins sinwan to the app root", () => {
+    const appRoot = fs.mkdtempSync(path.join(import.meta.dir, ".tmp-"));
+    const pkgDir = path.join(appRoot, "node_modules", "sinwan");
+    fs.mkdirSync(pkgDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(pkgDir, "package.json"),
+      JSON.stringify({ name: "sinwan", version: "1.0.0", main: "index.js" }),
+    );
+    fs.writeFileSync(path.join(pkgDir, "index.js"), "export {}\n");
+    try {
+      const plugin = sinwan({ cache: { root: appRoot } });
+      let resolveFn:
+        | ((args: { path: string }) => { path: string } | undefined)
+        | null = null;
+      plugin.setup({
+        config: {},
+        onLoad() {},
+        onResolve(_options, fn) {
+          resolveFn = fn;
+        },
+      });
+      expect(resolveFn).not.toBeNull();
+      expect(resolveFn!({ path: "sinwan-router" })).toBeUndefined();
+      const pinned = resolveFn!({ path: "sinwan" });
+      expect(pinned?.path).toContain("sinwan");
+    } finally {
+      fs.rmSync(appRoot, { recursive: true });
     }
   });
 });

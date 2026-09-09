@@ -1,6 +1,36 @@
 import { transformJSX, AnalyzerCache } from "sinwan-compiler";
 import * as fs from "fs";
 import * as path from "path";
+import {
+  SINWAN_SPECIFIER,
+  bunResolveSync,
+  resolveAppSinwan,
+} from "./resolve-app-sinwan.ts";
+
+export {
+  SINWAN_SPECIFIER,
+  isSinwanSpecifier,
+  resolveAppSinwan,
+} from "./resolve-app-sinwan.ts";
+export type { SpecifierResolver } from "./resolve-app-sinwan.ts";
+
+interface BunOnLoadResult {
+  contents?: string;
+  loader?: string;
+  errors?: { text: string; file: string }[];
+}
+
+interface BunPluginBuild {
+  config?: Record<string, unknown>;
+  onLoad(
+    options: { filter: RegExp },
+    callback: (args: { path: string }) => Promise<BunOnLoadResult>,
+  ): void;
+  onResolve?(
+    options: { filter: RegExp },
+    callback: (args: { path: string }) => { path: string } | undefined,
+  ): void;
+}
 
 export type SinwanCacheOptions =
   | boolean
@@ -62,12 +92,20 @@ export function sinwan(options: SinwanBunOptions = {}) {
 
   return {
     name: "sinwan",
-    setup(build: any) {
+    setup(build: BunPluginBuild) {
       // Configure JSX settings with defaults
       build.config = {
         ...build.config,
         jsx: opts.jsx,
       };
+
+      const appRoot =
+        typeof opts.cache === "object" ? opts.cache.root : process.cwd();
+      build.onResolve?.({ filter: SINWAN_SPECIFIER }, (args) => {
+        const resolved = resolveAppSinwan(args.path, appRoot, bunResolveSync);
+        if (resolved === undefined) return undefined;
+        return { path: resolved };
+      });
 
       // Optional incremental cross-file analyzer for dev/HMR.
       let cache: AnalyzerCache | null = null;
@@ -100,7 +138,7 @@ export function sinwan(options: SinwanBunOptions = {}) {
       // has a syntax/compile error, so the HMR WebSocket stays connected and
       // the client automatically picks up the fix without a manual refresh.
       build.onLoad({ filter: /\.[tj]sx$/ }, async (args: { path: string }) => {
-        const code = await (globalThis as any).Bun.file(args.path).text();
+        const code = await Bun.file(args.path).text();
 
         if (cache) {
           try {
@@ -125,11 +163,11 @@ export function sinwan(options: SinwanBunOptions = {}) {
             contents: transformed.code,
             loader: args.path.endsWith("x") ? "tsx" : "ts",
           };
-        } catch (err: any) {
+        } catch (err: unknown) {
           return {
             errors: [
               {
-                text: err?.message ?? String(err),
+                text: err instanceof Error ? err.message : String(err),
                 file: args.path,
               },
             ],
