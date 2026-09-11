@@ -223,6 +223,95 @@ describe("sinwan bun plugin", () => {
   });
 });
 
+const SPREAD_JSX = "const Card = (props) => <div {...props}><p>Hello</p></div>;";
+
+async function transformWithPlugin(
+  options: Parameters<typeof sinwan>[0],
+  source: string,
+  filename = "Card.tsx",
+): Promise<{ contents: string; warns: string[] }> {
+  const plugin = sinwan(options);
+  let onLoadFn: ((args: { path: string }) => Promise<{ contents: string }>) | null =
+    null;
+  plugin.setup({
+    onLoad(_filter, fn) {
+      onLoadFn = fn;
+    },
+  });
+  const tmpDir = fs.mkdtempSync(path.join(import.meta.dir, ".tmp-"));
+  const tmpFile = path.join(tmpDir, filename);
+  fs.writeFileSync(tmpFile, source);
+  const warns: string[] = [];
+  const originalWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    warns.push(String(args[0]));
+  };
+  try {
+    const result = await onLoadFn!({ path: tmpFile });
+    return { contents: result.contents, warns };
+  } finally {
+    console.warn = originalWarn;
+    fs.rmSync(tmpDir, { recursive: true });
+  }
+}
+
+describe("compiler dev warnings", () => {
+  it("does not warn about skipped hoists when dev is false", async () => {
+    const { warns, contents } = await transformWithPlugin(
+      { cache: false, dev: false },
+      SPREAD_JSX,
+    );
+    expect(contents).toContain("{...props}");
+    expect(warns.some((line) => line.includes("template hoisting skipped"))).toBe(
+      false,
+    );
+  });
+
+  it("warns about skipped hoists when dev is true", async () => {
+    const { warns } = await transformWithPlugin(
+      { cache: false, dev: true },
+      SPREAD_JSX,
+    );
+    expect(warns.some((line) => line.includes("template hoisting skipped"))).toBe(
+      true,
+    );
+  });
+
+  it("defaults to quiet when NODE_ENV is production", async () => {
+    const previous = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      const { warns } = await transformWithPlugin({ cache: false }, SPREAD_JSX);
+      expect(warns.some((line) => line.includes("template hoisting skipped"))).toBe(
+        false,
+      );
+    } finally {
+      if (previous === undefined) {
+        delete process.env.NODE_ENV;
+      } else {
+        process.env.NODE_ENV = previous;
+      }
+    }
+  });
+
+  it("defaults to warnings when NODE_ENV is not production", async () => {
+    const previous = process.env.NODE_ENV;
+    process.env.NODE_ENV = "development";
+    try {
+      const { warns } = await transformWithPlugin({ cache: false }, SPREAD_JSX);
+      expect(warns.some((line) => line.includes("template hoisting skipped"))).toBe(
+        true,
+      );
+    } finally {
+      if (previous === undefined) {
+        delete process.env.NODE_ENV;
+      } else {
+        process.env.NODE_ENV = previous;
+      }
+    }
+  });
+});
+
 const COMPILER_RANGE = ">=0.2.5 <1.0.0";
 
 describe("sinwan-compiler dependency range", () => {

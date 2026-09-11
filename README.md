@@ -36,6 +36,8 @@ The plugin depends on `sinwan-compiler` with `>=0.2.5 <1.0.0` and does not bundl
 sinwan({
   // Enable template hoisting (default: true)
   hoist: true,
+  // Warn when hoisting is skipped (default: NODE_ENV !== "production")
+  dev: true,
   // Emit explicit binding descriptors (default: false)
   explicitBindings: false,
   // Path to reactive-props metadata from `sinwan analyze`
@@ -53,6 +55,7 @@ sinwan({
 | Option             | Type                            | Default     | Description                                           |
 | ------------------ | ------------------------------- | ----------- | ----------------------------------------------------- |
 | `hoist`            | `boolean`                       | `true`      | Hoist static DOM to module-level templates            |
+| `dev`              | `boolean`                       | `NODE_ENV !== "production"` | Warn when template hoisting is skipped |
 | `explicitBindings` | `boolean`                       | `false`     | Emit compiler-driven binding descriptors              |
 | `analyze`          | `string`                        | `undefined` | Path to reactive-props metadata from `sinwan analyze` |
 | `cache`            | `boolean \| SinwanCacheOptions` | `false`     | Enable incremental in-memory cross-file analysis      |

@@ -49,6 +49,12 @@ export interface SinwanBunOptions {
   hoist?: boolean;
   /** Emit explicit compiler-driven binding descriptors (default: true). */
   explicitBindings?: boolean;
+  /**
+   * Warn when template hoisting is skipped (spreads, enhancer tags, …).
+   * Default: `process.env.NODE_ENV !== "production"`, read when `sinwan()`
+   * runs — not when this plugin package was compiled.
+   */
+  dev?: boolean;
   /** Path to the reactive-props metadata file produced by `sinwan analyze`. */
   analyze?: string;
   /**
@@ -59,6 +65,14 @@ export interface SinwanBunOptions {
    * to configure root/paths and persistent cache).
    */
   cache?: SinwanCacheOptions;
+}
+
+/**
+ * Bracket access so Bun.build cannot fold `process.env.NODE_ENV` into `true`
+ * when this plugin itself is bundled.
+ */
+function defaultCompilerDev(): boolean {
+  return process.env["NODE_ENV"] !== "production";
 }
 
 const DEFAULT_OPTIONS: Required<
@@ -78,6 +92,7 @@ const DEFAULT_OPTIONS: Required<
  */
 export function sinwan(options: SinwanBunOptions = {}) {
   const opts = { ...DEFAULT_OPTIONS, ...options };
+  const compilerDev = options.dev ?? defaultCompilerDev();
 
   return {
     name: "sinwan",
@@ -136,7 +151,7 @@ export function sinwan(options: SinwanBunOptions = {}) {
           const transformed = transformJSX(code, args.path, {
             hoist: opts.hoist,
             explicitBindings: opts.explicitBindings,
-            dev: process.env.NODE_ENV !== "production",
+            dev: compilerDev,
             analyze: opts.analyze,
             analyzeMetadata: cache ? cache.reactiveProps : undefined,
             resolveImport: cache ? cache.resolve : undefined,
