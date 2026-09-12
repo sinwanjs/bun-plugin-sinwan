@@ -6,6 +6,7 @@ import {
   bunResolveSync,
   resolveAppSinwan,
 } from "./resolve-app-sinwan.ts";
+import { injectComponentHmr, isNodeModulePath } from "./hmr.ts";
 
 export {
   SINWAN_SPECIFIER,
@@ -65,6 +66,11 @@ export interface SinwanBunOptions {
    * to configure root/paths and persistent cache).
    */
   cache?: SinwanCacheOptions;
+  /**
+   * Inject per-component Fast Refresh boundaries (`import.meta.hot.accept`).
+   * Default: same as `dev` (on unless `NODE_ENV` is `"production"`).
+   */
+  fastRefresh?: boolean;
 }
 
 /**
@@ -93,6 +99,7 @@ const DEFAULT_OPTIONS: Required<
 export function sinwan(options: SinwanBunOptions = {}) {
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const compilerDev = options.dev ?? defaultCompilerDev();
+  const fastRefresh = options.fastRefresh ?? compilerDev;
 
   return {
     name: "sinwan",
@@ -157,8 +164,14 @@ export function sinwan(options: SinwanBunOptions = {}) {
             resolveImport: cache ? cache.resolve : undefined,
           });
 
+          let contents = transformed.code;
+          if (fastRefresh && !isNodeModulePath(args.path)) {
+            const withHmr = injectComponentHmr(contents, args.path);
+            if (withHmr !== null) contents = withHmr;
+          }
+
           return {
-            contents: transformed.code,
+            contents,
             loader: args.path.endsWith("x") ? "tsx" : "ts",
           };
         } catch (err: unknown) {

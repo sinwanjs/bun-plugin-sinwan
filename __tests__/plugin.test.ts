@@ -240,6 +240,7 @@ async function transformWithPlugin(
   });
   const tmpDir = fs.mkdtempSync(path.join(import.meta.dir, ".tmp-"));
   const tmpFile = path.join(tmpDir, filename);
+  fs.mkdirSync(path.dirname(tmpFile), { recursive: true });
   fs.writeFileSync(tmpFile, source);
   const warns: string[] = [];
   const originalWarn = console.warn;
@@ -324,5 +325,48 @@ describe("sinwan-compiler dependency range", () => {
     };
     expect(pkg.dependencies["sinwan-compiler"]).toBe(COMPILER_RANGE);
     expect(pkg.peerDependencies["sinwan-compiler"]).toBe(COMPILER_RANGE);
+  });
+});
+
+const HELLO_EXPORT = "export function Hello() { return <div>hi</div>; }\n";
+
+describe("Fast Refresh HMR injection", () => {
+  it("injects accept footer for an exported component in dev", async () => {
+    const { contents } = await transformWithPlugin(
+      { cache: false, fastRefresh: true, dev: false },
+      HELLO_EXPORT,
+      "Hello.tsx",
+    );
+    expect(contents).toContain("$$sinwanReplace");
+    expect(contents).toContain("$$sinwanRefresh");
+    expect(contents).toContain("import.meta.hot.accept");
+    expect(contents).toContain("__$sinwanReplace(Hello, __m.Hello)");
+  });
+
+  it("does not inject Fast Refresh when disabled", async () => {
+    const { contents } = await transformWithPlugin(
+      { cache: false, fastRefresh: false, dev: true },
+      HELLO_EXPORT,
+      "Hello.tsx",
+    );
+    expect(contents).not.toContain("import.meta.hot.accept");
+  });
+
+  it("does not inject Fast Refresh for node_modules", async () => {
+    const { contents } = await transformWithPlugin(
+      { cache: false, fastRefresh: true, dev: false },
+      HELLO_EXPORT,
+      path.join("node_modules", "lib", "Hello.tsx"),
+    );
+    expect(contents).not.toContain("import.meta.hot.accept");
+  });
+
+  it("does not inject Fast Refresh when the module exports no component", async () => {
+    const { contents } = await transformWithPlugin(
+      { cache: false, fastRefresh: true, dev: false },
+      "export const max = 1;\n",
+      "util.tsx",
+    );
+    expect(contents).not.toContain("import.meta.hot.accept");
   });
 });
