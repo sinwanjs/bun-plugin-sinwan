@@ -52,13 +52,15 @@ sinwan({
 });
 ```
 
-| Option             | Type                            | Default     | Description                                           |
-| ------------------ | ------------------------------- | ----------- | ----------------------------------------------------- |
-| `hoist`            | `boolean`                       | `true`      | Hoist static DOM to module-level templates            |
-| `dev`              | `boolean`                       | `NODE_ENV !== "production"` | Warn when template hoisting is skipped |
-| `explicitBindings` | `boolean`                       | `false`     | Emit compiler-driven binding descriptors              |
-| `analyze`          | `string`                        | `undefined` | Path to reactive-props metadata from `sinwan analyze` |
-| `cache`            | `boolean \| SinwanCacheOptions` | `false`     | Enable incremental in-memory cross-file analysis      |
+| Option             | Type                            | Default                     | Description                                           |
+| ------------------ | ------------------------------- | --------------------------- | ----------------------------------------------------- |
+| `hoist`            | `boolean`                       | `true`                      | Hoist static DOM to module-level templates            |
+| `dev`              | `boolean`                       | `NODE_ENV !== "production"` | Warn when template hoisting is skipped                |
+| `explicitBindings` | `boolean`                       | `false`                     | Emit compiler-driven binding descriptors              |
+| `analyze`          | `string`                        | `undefined`                 | Path to reactive-props metadata from `sinwan analyze` |
+| `cache`            | `boolean \| SinwanCacheOptions` | `false`                     | Enable incremental in-memory cross-file analysis      |
+
+Enable `sinwan({ derivedLocals: true })` to promote eligible reactive `const` derivations inside component setup. This defaults to `false`; use compiler and runtime builds containing derived-local promotion and getter-attribute hydration support. `/* sinwan-snapshot */` preserves an intentional one-shot read. In development, the compiler diagnoses eligible JSX snapshots and setup `if` reads. Imported functions annotated with `/** @sinwan-pure */` JSDoc are also promoted; see the [`@sinwan-pure` JSDoc contract](../sinwan-compiler/docs/transform.md#sinwan-pure-jsdoc-contract) in the compiler docs.
 
 ## How it works
 

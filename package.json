@@ -1,6 +1,6 @@
 {
   "name": "bun-plugin-sinwan",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Bun plugin for sinwan",
   "author": "Mohammed Ben Cheikh",
   "license": "MIT",
@@ -37,14 +37,12 @@
     "test": "bun test --coverage __tests__/plugin.test.ts __tests__/resolve-app-sinwan.test.ts __tests__/hmr.test.ts"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "typescript": "^5"
+    "@types/bun": "latest"
   },
   "dependencies": {
-    "sinwan-compiler": ">=0.2.5 <1.0.0"
+    "sinwan-compiler": ">=0.4.0 <1.0.0"
   },
   "peerDependencies": {
-    "typescript": "^5",
-    "sinwan-compiler": ">=0.2.5 <1.0.0"
+    "typescript": ">=5.0.0 <8.0.0"
   }
 }

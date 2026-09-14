@@ -23,6 +23,18 @@ describe("injectComponentHmr", () => {
     const out = injectComponentHmr(code, "Hello.tsx");
     expect(out).toContain("__$sinwanReplace(Foo, __m.Bar)");
   });
+
+  it("does not replace type-only exports that have no runtime binding", () => {
+    const code = `
+const Button = () => null;
+type ButtonProps = { variant?: string };
+export { Button };
+export type { ButtonProps };
+`;
+    const out = injectComponentHmr(code, "button.tsx");
+    expect(out).toContain("__$sinwanReplace(Button, __m.Button)");
+    expect(out).not.toContain("__$sinwanReplace(ButtonProps");
+  });
 });
 
 describe("isNodeModulePath", () => {

@@ -4,6 +4,48 @@ import * as path from "path";
 import { sinwan } from "../src/index.ts";
 
 describe("sinwan bun plugin", () => {
+  it("forwards opt-in derived locals to the linked compiler", async () => {
+    const directory = fs.mkdtempSync(
+      path.join(import.meta.dir, ".tmp-derived-"),
+    );
+    const filename = path.join(directory, "App.tsx");
+    fs.writeFileSync(
+      filename,
+      `export function App() {
+      const open = state.value > 0;
+      return <div title={open}>{open}</div>;
+    }`,
+    );
+    try {
+      for (const derivedLocals of [false, true]) {
+        const plugin = sinwan({
+          cache: false,
+          dev: false,
+          fastRefresh: false,
+          hoist: false,
+          derivedLocals,
+        });
+        const callbacks: Array<
+          (args: { path: string }) => Promise<{ contents: string }>
+        > = [];
+        plugin.setup({
+          onLoad(_options, callback) {
+            callbacks.push(callback);
+          },
+        });
+        const result = await callbacks[0]!({ path: filename });
+        expect(
+          result.contents.includes("const open = () => state.value > 0;"),
+        ).toBe(derivedLocals);
+        expect(result.contents.includes("title={() => open()}")).toBe(
+          derivedLocals,
+        );
+      }
+    } finally {
+      fs.rmSync(directory, { recursive: true });
+    }
+  });
+
   it("can be created with cache enabled", () => {
     const plugin = sinwan({ cache: true });
     expect(plugin.name).toBe("sinwan");
@@ -49,7 +91,10 @@ describe("sinwan bun plugin", () => {
     let onLoadFn: ((args: { path: string }) => Promise<any>) | null = null;
     const fakeBuild = {
       config: {},
-      onLoad(_filter: { filter: RegExp }, fn: (args: { path: string }) => Promise<unknown>) {
+      onLoad(
+        _filter: { filter: RegExp },
+        fn: (args: { path: string }) => Promise<unknown>,
+      ) {
         onLoadFn = fn;
       },
     };
@@ -223,7 +268,8 @@ describe("sinwan bun plugin", () => {
   });
 });
 
-const SPREAD_JSX = "const Card = (props) => <div {...props}><p>Hello</p></div>;";
+const SPREAD_JSX =
+  "const Card = (props) => <div {...props}><p>Hello</p></div>;";
 
 async function transformWithPlugin(
   options: Parameters<typeof sinwan>[0],
@@ -231,8 +277,9 @@ async function transformWithPlugin(
   filename = "Card.tsx",
 ): Promise<{ contents: string; warns: string[] }> {
   const plugin = sinwan(options);
-  let onLoadFn: ((args: { path: string }) => Promise<{ contents: string }>) | null =
-    null;
+  let onLoadFn:
+    | ((args: { path: string }) => Promise<{ contents: string }>)
+    | null = null;
   plugin.setup({
     onLoad(_filter, fn) {
       onLoadFn = fn;
@@ -263,9 +310,9 @@ describe("compiler dev warnings", () => {
       SPREAD_JSX,
     );
     expect(contents).toContain("{...props}");
-    expect(warns.some((line) => line.includes("template hoisting skipped"))).toBe(
-      false,
-    );
+    expect(
+      warns.some((line) => line.includes("template hoisting skipped")),
+    ).toBe(false);
   });
 
   it("warns about skipped hoists when dev is true", async () => {
@@ -273,9 +320,9 @@ describe("compiler dev warnings", () => {
       { cache: false, dev: true },
       SPREAD_JSX,
     );
-    expect(warns.some((line) => line.includes("template hoisting skipped"))).toBe(
-      true,
-    );
+    expect(
+      warns.some((line) => line.includes("template hoisting skipped")),
+    ).toBe(true);
   });
 
   it("defaults to quiet when NODE_ENV is production", async () => {
@@ -283,9 +330,9 @@ describe("compiler dev warnings", () => {
     process.env.NODE_ENV = "production";
     try {
       const { warns } = await transformWithPlugin({ cache: false }, SPREAD_JSX);
-      expect(warns.some((line) => line.includes("template hoisting skipped"))).toBe(
-        false,
-      );
+      expect(
+        warns.some((line) => line.includes("template hoisting skipped")),
+      ).toBe(false);
     } finally {
       if (previous === undefined) {
         delete process.env.NODE_ENV;
@@ -300,9 +347,9 @@ describe("compiler dev warnings", () => {
     process.env.NODE_ENV = "development";
     try {
       const { warns } = await transformWithPlugin({ cache: false }, SPREAD_JSX);
-      expect(warns.some((line) => line.includes("template hoisting skipped"))).toBe(
-        true,
-      );
+      expect(
+        warns.some((line) => line.includes("template hoisting skipped")),
+      ).toBe(true);
     } finally {
       if (previous === undefined) {
         delete process.env.NODE_ENV;
@@ -313,7 +360,7 @@ describe("compiler dev warnings", () => {
   });
 });
 
-const COMPILER_RANGE = ">=0.2.5 <1.0.0";
+const COMPILER_RANGE = ">=0.4.0 <1.0.0";
 
 describe("sinwan-compiler dependency range", () => {
   it("accepts any 0.x compiler without a plugin republish", () => {
@@ -324,7 +371,6 @@ describe("sinwan-compiler dependency range", () => {
       peerDependencies: Record<string, string>;
     };
     expect(pkg.dependencies["sinwan-compiler"]).toBe(COMPILER_RANGE);
-    expect(pkg.peerDependencies["sinwan-compiler"]).toBe(COMPILER_RANGE);
   });
 });
 
