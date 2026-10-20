@@ -4,7 +4,7 @@ import * as path from "path";
 import {
   SINWAN_SPECIFIER,
   bunResolveSync,
-  resolveAppSinwan,
+  resolveSinwanImport,
 } from "./resolve-app-sinwan.ts";
 import { injectComponentHmr, isNodeModulePath } from "./hmr.ts";
 
@@ -28,7 +28,9 @@ interface BunPluginBuild {
   ): void;
   onResolve?(
     options: { filter: RegExp },
-    callback: (args: { path: string }) => { path: string } | undefined,
+    callback: (args: { path: string }) =>
+      | { path: string; external?: boolean }
+      | undefined,
   ): void;
 }
 
@@ -72,6 +74,12 @@ export interface SinwanBunOptions {
    * Default: same as `dev` (on unless `NODE_ENV` is `"production"`).
    */
   fastRefresh?: boolean;
+  /**
+   * Library/publish builds: keep `sinwan` / `sinwan/*` as bare imports and
+   * mark them external. Default false (apps): rewrite to the app's copy so
+   * linked packages do not load a second runtime.
+   */
+  peerExternal?: boolean;
 }
 
 /**
@@ -83,11 +91,12 @@ function defaultCompilerDev(): boolean {
 }
 
 const DEFAULT_OPTIONS: Required<
-  Pick<SinwanBunOptions, "hoist" | "explicitBindings" | "cache">
+  Pick<SinwanBunOptions, "hoist" | "explicitBindings" | "cache" | "peerExternal">
 > = {
   hoist: true,
   explicitBindings: false,
   cache: true,
+  peerExternal: false,
 };
 
 /**
@@ -107,11 +116,15 @@ export function sinwan(options: SinwanBunOptions = {}) {
     setup(build: BunPluginBuild) {
       const appRoot =
         typeof opts.cache === "object" ? opts.cache.root : process.cwd();
-      build.onResolve?.({ filter: SINWAN_SPECIFIER }, (args) => {
-        const resolved = resolveAppSinwan(args.path, appRoot, bunResolveSync);
-        if (resolved === undefined) return undefined;
-        return { path: resolved };
-      });
+      build.onResolve?.({ filter: SINWAN_SPECIFIER }, (args) =>
+        resolveSinwanImport(
+          args.path,
+          opts.peerExternal,
+          appRoot,
+          bunResolveSync,
+          compilerDev,
+        ),
+      );
 
       // Optional incremental cross-file analyzer for dev/HMR.
       let cache: AnalyzerCache | null = null;

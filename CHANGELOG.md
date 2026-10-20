@@ -2,6 +2,14 @@
 
 All notable changes to **bun-plugin-sinwan** are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com) and bun-plugin-sinwan adheres to [Semantic Versioning](https://semver.org).
 
+## [1.0.0] — Compiler 1.0
+
+bun-plugin-sinwan 1.0.0 requires **sinwan-compiler 1.0.0**. The plugin still calls `transformJSX` and does not bundle the compiler. Generated code follows the 1.0 compiler: hoist helpers import `sinwan/renderer/web`, and `createStore` / `createMutable` are recognized from `sinway`.
+
+### Changed
+
+- **`sinwan-compiler` dependency**: `>=1.0.0 <2.0.0`. The previous range stopped before 1.0.0.
+
 ## [0.3.1] — @sinwan-pure Resolver Forwarding
 
 bun-plugin-sinwan 0.3.1 forwards the analyzer cache `resolve` callback to the compiler as `resolveImport`, enabling `@sinwan-pure` JSDoc annotation scanning across all import types (relative, bare specifiers, scoped packages, subpaths). Pair with **sinwan-compiler 0.4.0**.
