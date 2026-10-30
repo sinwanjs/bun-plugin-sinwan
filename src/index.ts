@@ -38,6 +38,11 @@ export type SinwanCacheOptions =
   | boolean
   | {
       root: string;
+      /**
+       * tsconfig/jsconfig whose `paths` the analyzer uses to resolve aliased
+       * imports such as `@/components/...`. Defaults to `tsconfig.json`, then
+       * `jsconfig.json`, in `root`.
+       */
       tsConfigPath?: string;
       /** Path to a JSON cache file for persisting the analyzer state. */
       cachePath?: string;
@@ -90,6 +95,15 @@ function defaultCompilerDev(): boolean {
   return process.env["NODE_ENV"] !== "production";
 }
 
+/** The project's tsconfig.json, else jsconfig.json, so aliased imports resolve. */
+function defaultTsConfigPath(root: string): string | undefined {
+  for (const name of ["tsconfig.json", "jsconfig.json"]) {
+    const candidate = path.join(root, name);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return undefined;
+}
+
 const DEFAULT_OPTIONS: Required<
   Pick<SinwanBunOptions, "hoist" | "explicitBindings" | "cache" | "peerExternal">
 > = {
@@ -132,7 +146,8 @@ export function sinwan(options: SinwanBunOptions = {}) {
         const root =
           typeof opts.cache === "object" ? opts.cache.root : process.cwd();
         const tsConfigPath =
-          typeof opts.cache === "object" ? opts.cache.tsConfigPath : undefined;
+          (typeof opts.cache === "object" ? opts.cache.tsConfigPath : undefined) ??
+          defaultTsConfigPath(root);
         const cachePath =
           typeof opts.cache === "object" ? opts.cache.cachePath : undefined;
         const bunfigPath =

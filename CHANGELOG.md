@@ -2,6 +2,16 @@
 
 All notable changes to **bun-plugin-sinwan** are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com) and bun-plugin-sinwan adheres to [Semantic Versioning](https://semver.org).
 
+## [1.0.1] — Aliased imports reach the analyzer
+
+### Fixed
+
+- **Default `tsConfigPath` (`index.ts`)**: With `cache: true` (the default, used by `Bun.build` in app `build.ts` files) or a `cache` object without `tsConfigPath`, the analyzer received no tsconfig, so `@/…` imports were never linked to their files. Props passed through those imports were treated as static, and expressions such as `priceLabel(props.plan, props.billing)` compiled as one-time reads. The plugin now uses `tsconfig.json`, else `jsconfig.json`, in the cache root. An explicit `tsConfigPath` still wins.
+
+### Changed
+
+- **`sinwan-compiler` dependency**: `>=1.1.2 <2.0.0`. Compiler 1.1.2 reads tsconfig files with comments (as create-sinwan generates them) and follows `extends`; earlier versions silently ignored their `paths`.
+
 ## [1.0.0] — Compiler 1.0
 
 bun-plugin-sinwan 1.0.0 requires **sinwan-compiler 1.0.0**. The plugin still calls `transformJSX` and does not bundle the compiler. Generated code follows the 1.0 compiler: hoist helpers import `sinwan/renderer/web`, and `createStore` / `createMutable` are recognized from `sinway`.

@@ -381,7 +381,7 @@ describe("compiler dev warnings", () => {
   });
 });
 
-const COMPILER_RANGE = ">=1.0.0 <2.0.0";
+const COMPILER_RANGE = ">=1.1.2 <2.0.0";
 
 describe("sinwan-compiler dependency range", () => {
   it("requires sinwan-compiler 1.x", () => {
@@ -435,5 +435,66 @@ describe("Fast Refresh HMR injection", () => {
       "util.tsx",
     );
     expect(contents).not.toContain("import.meta.hot.accept");
+  });
+});
+
+describe("default tsconfig for the analyzer", () => {
+  const CHILD = `import { cc } from "sinwan/component";
+export const Child = cc((props: { title: string }) => <h1>{format(props.title)}</h1>);
+function format(value: string): string { return value; }
+`;
+  const PARENT = `import { cc } from "sinwan/component";
+import { signal } from "sinwan/reactivity";
+import { Child } from "@/components/Child";
+export const Parent = cc(() => {
+  const title = signal("Hello");
+  return <Child title={title.value} />;
+});
+`;
+
+  async function childOutput(
+    configFile: "tsconfig.json" | "jsconfig.json" | null,
+  ): Promise<string> {
+    const tmpDir = fs.mkdtempSync(path.join(import.meta.dir, ".tmp-"));
+    try {
+      if (configFile) {
+        fs.writeFileSync(
+          path.join(tmpDir, configFile),
+          JSON.stringify({ compilerOptions: { paths: { "@/*": ["./src/*"] } } }),
+        );
+      }
+      fs.mkdirSync(path.join(tmpDir, "src", "components"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, "src", "pages"), { recursive: true });
+      const child = path.join(tmpDir, "src", "components", "Child.tsx");
+      const parent = path.join(tmpDir, "src", "pages", "Parent.tsx");
+      fs.writeFileSync(child, CHILD);
+      fs.writeFileSync(parent, PARENT);
+
+      const plugin = sinwan({ cache: { root: tmpDir }, fastRefresh: false });
+      let onLoadFn: ((args: { path: string }) => Promise<{ contents: string }>) | null = null;
+      const fakeBuild = {
+        config: {},
+        onLoad(_filter: unknown, fn: (args: { path: string }) => Promise<{ contents: string }>) {
+          onLoadFn = fn;
+        },
+      };
+      plugin.setup(fakeBuild);
+      await onLoadFn!({ path: parent });
+      return (await onLoadFn!({ path: child })).contents;
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true });
+    }
+  }
+
+  it("resolves @/ imports through the root tsconfig.json without tsConfigPath", async () => {
+    expect(await childOutput("tsconfig.json")).toContain("() => format(");
+  });
+
+  it("falls back to jsconfig.json when there is no tsconfig.json", async () => {
+    expect(await childOutput("jsconfig.json")).toContain("() => format(");
+  });
+
+  it("treats the prop as static when no config maps the alias", async () => {
+    expect(await childOutput(null)).not.toContain("() => format(");
   });
 });
