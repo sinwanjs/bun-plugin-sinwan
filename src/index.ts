@@ -1,4 +1,12 @@
-import { transformJSX, AnalyzerCache } from "sinwan-compiler";
+import { transformJSX, AnalyzerCache, IMAGE_QUERY_PATTERN } from "sinwan-compiler";
+import {
+  IMAGE_FILE_PATTERN,
+  IMAGE_FILE_PREFIX,
+  assertBunImageRuntime,
+  loadImageModule,
+  resolveImageConfig,
+  type ImageConfig,
+} from "sinwan-compiler/image";
 import * as fs from "fs";
 import * as path from "path";
 import {
@@ -23,16 +31,25 @@ interface BunOnLoadResult {
 
 interface BunPluginBuild {
   onLoad(
-    options: { filter: RegExp },
+    options: { filter: RegExp; namespace?: string },
     callback: (args: { path: string }) => Promise<BunOnLoadResult>,
   ): void;
   onResolve?(
     options: { filter: RegExp },
-    callback: (args: { path: string }) =>
-      | { path: string; external?: boolean }
+    callback: (args: { path: string; importer?: string }) =>
+      | { path: string; external?: boolean; namespace?: string }
       | undefined,
   ): void;
 }
+
+/** Namespace of the modules behind `<Img>` asset imports (`?sinwan-img=`). */
+export const IMAGE_NAMESPACE = "sinwan-img";
+
+/**
+ * `<Img>` (`sinwan/image`) settings. `root` defaults to `cache.root`, else
+ * the working directory; `publicDir` and `cacheDir` resolve against it.
+ */
+export type SinwanImageOptions = Partial<ImageConfig>;
 
 export type SinwanCacheOptions =
   | boolean
@@ -85,6 +102,13 @@ export interface SinwanBunOptions {
    * linked packages do not load a second runtime.
    */
   peerExternal?: boolean;
+  /**
+   * `<Img>` optimization (Bun.Image): public directory for `src="/x.jpg"`,
+   * cache directory (default `.sinwan/images`), sizes and quality. Static
+   * `<Img>` sources are optimized at build and in the dev server; unchanged
+   * images are served from the cache.
+   */
+  images?: SinwanImageOptions;
 }
 
 /**
@@ -114,6 +138,46 @@ const DEFAULT_OPTIONS: Required<
 };
 
 /**
+ * A module that rethrows `err` in the browser, plus the error Bun prints. Keeps
+ * the dev server alive on a compile or image error, so the HMR socket stays
+ * connected and the fix is picked up without a reload.
+ */
+function errorModule(
+  err: unknown,
+  file: string,
+  loader: NonNullable<BunOnLoadResult["loader"]>,
+): BunOnLoadResult {
+  const text = err instanceof Error ? err.message : String(err);
+  return {
+    contents: `throw new Error(${JSON.stringify(text)});`,
+    errors: [{ text, file }],
+    loader,
+  };
+}
+
+/**
+ * Absolute path (query kept) of an `<Img>` asset import: `/x.jpg` is in the
+ * public directory, `./x.jpg` is relative to `fromDir` (the importer's
+ * directory), anything else is a
+ * module specifier (tsconfig paths, packages) resolved by Bun.
+ */
+export function resolveImagePath(
+  specifier: string,
+  fromDir: string,
+  config: Pick<ImageConfig, "publicDir">,
+  resolve: (specifier: string, fromDir: string) => string = bunResolveSync,
+): string {
+  const index = specifier.search(IMAGE_QUERY_PATTERN);
+  const file = specifier.slice(0, index);
+  const query = specifier.slice(index);
+  let absolute: string;
+  if (file.startsWith("/")) absolute = path.join(config.publicDir, file);
+  else if (file.startsWith("./") || file.startsWith("../")) absolute = path.resolve(fromDir, file);
+  else absolute = resolve(file, fromDir);
+  return `${absolute}${query}`;
+}
+
+/**
  * Sinwan Bun plugin.
  *
  * Provides JSX transformation (hoisting) using Bun's native plugin API.
@@ -130,6 +194,30 @@ export function sinwan(options: SinwanBunOptions = {}) {
     setup(build: BunPluginBuild) {
       const appRoot =
         typeof opts.cache === "object" ? opts.cache.root : process.cwd();
+      // <Img>: `?sinwan-img=` imports become optimized image asset modules.
+      assertBunImageRuntime();
+      const imageConfig = resolveImageConfig({ root: appRoot, ...options.images });
+      build.onResolve?.({ filter: IMAGE_QUERY_PATTERN }, (args) => ({
+        path: resolveImagePath(
+          args.path,
+          args.importer ? path.dirname(args.importer) : imageConfig.root,
+          imageConfig,
+        ),
+        namespace: IMAGE_NAMESPACE,
+      }));
+      // Optimized files are imported by absolute path; hand the path back so
+      // Bun does not look it up in a directory listing cached before it was written.
+      build.onResolve?.({ filter: IMAGE_FILE_PATTERN }, (args) => ({
+        path: args.path.slice(IMAGE_FILE_PREFIX.length),
+      }));
+      build.onLoad({ filter: /.*/, namespace: IMAGE_NAMESPACE }, async (args) => {
+        try {
+          return { contents: await loadImageModule(args.path, imageConfig), loader: "js" };
+        } catch (err: unknown) {
+          return errorModule(err, args.path, "js");
+        }
+      });
+
       build.onResolve?.({ filter: SINWAN_SPECIFIER }, (args) =>
         resolveSinwanImport(
           args.path,
@@ -192,6 +280,7 @@ export function sinwan(options: SinwanBunOptions = {}) {
             analyze: opts.analyze,
             analyzeMetadata: cache ? cache.reactiveProps : undefined,
             resolveImport: cache ? cache.resolve : undefined,
+            images: { host: "bun" },
           });
 
           let contents = transformed.code;
@@ -205,19 +294,10 @@ export function sinwan(options: SinwanBunOptions = {}) {
             loader: args.path.endsWith("x") ? "tsx" : "ts",
           };
         } catch (err: unknown) {
-          const text = err instanceof Error ? err.message : String(err);
-          return {
-            contents: `throw new Error(${JSON.stringify(text)});`,
-            errors: [
-              {
-                text,
-                file: args.path,
-              },
-            ],
-            loader: args.path.endsWith("x") ? "tsx" : "ts",
-          };
+          return errorModule(err, args.path, args.path.endsWith("x") ? "tsx" : "ts");
         }
       });
+
     },
   } satisfies Bun.BunPlugin;
 }

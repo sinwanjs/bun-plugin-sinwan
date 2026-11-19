@@ -2,6 +2,21 @@
 
 All notable changes to **bun-plugin-sinwan** are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com) and bun-plugin-sinwan adheres to [Semantic Versioning](https://semver.org).
 
+## [1.1.0] — `<Img>` image optimization
+
+### Added
+
+- **`<Img>` (`sinwan/image`)**: the plugin compiles with `images: { host: "bun" }`, so static `<Img>` sources become `?sinwan-img=` imports, and it serves those imports with `sinwan-compiler/image`.
+  - The images are optimized with `Bun.Image` and stored in the content-addressed cache (`.sinwan/images/`; unchanged images are not processed again), then emitted as hashed assets by `Bun.build` and the `Bun.serve` dev server (`[serve.static] plugins`).
+  - `/x.jpg` resolves in `publicDir`, `./x.jpg` next to the importer, and other specifiers (tsconfig paths, packages) through Bun.
+  - Optimized files are imported through `sinwan-img-file:`, which the plugin resolves directly. Bun caches directory listings, so files written to the cache after a first listing did not otherwise resolve when several images built at once.
+  - Image errors are reported by the build and keep the dev server alive.
+- **`images` option**: `publicDir`, `cacheDir`, `deviceSizes`, `imageSizes`, `quality`, `maxPixels` (`root` defaults to `cache.root`).
+
+### Changed
+
+- **`sinwan-compiler` dependency**: `>=1.3.0 <2.0.0`.
+
 ## [1.0.1] — Aliased imports reach the analyzer
 
 ### Fixed

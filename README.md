@@ -61,6 +61,23 @@ sinwan({
 
 Enable `sinwan({ derivedLocals: true })` to promote eligible reactive `const` derivations inside component setup. This defaults to `false`; use compiler and runtime builds containing derived-local promotion and getter-attribute hydration support. `/* sinwan-snapshot */` preserves an intentional one-shot read. In development, the compiler diagnoses eligible JSX snapshots and setup `if` reads. Imported functions annotated with `/** @sinwan-pure */` JSDoc are also promoted; see the [`@sinwan-pure` JSDoc contract](../sinwan-compiler/docs/transform.md#sinwan-pure-jsdoc-contract) in the compiler docs.
 
+## Images
+
+`<Img>` from `sinwan/image` is optimized by this plugin with Bun's `Bun.Image`, in `Bun.build` and in the `Bun.serve` dev server (`[serve.static] plugins`). Static sources become hashed WebP/AVIF/JPEG/PNG assets with a `srcset`; files are cached in `.sinwan/images/`, so unchanged images are not processed again. Settings:
+
+```ts
+sinwan({
+  images: {
+    publicDir: "public",          // src="/x.jpg"
+    cacheDir: ".sinwan/images",
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    quality: 75,
+  },
+});
+```
+
+Serve runtime sources with `createImageHandler` from `sinwan-compiler/image` (see the `sinwan` README).
+
 ## How it works
 
 - Transforms `.tsx` and `.jsx` files via Bun's `onLoad` hook

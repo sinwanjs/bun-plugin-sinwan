@@ -29,8 +29,8 @@ describe("sinwan bun plugin", () => {
           (args: { path: string }) => Promise<{ contents: string }>
         > = [];
         plugin.setup({
-          onLoad(_options, callback) {
-            callbacks.push(callback);
+          onLoad(options, callback) {
+            if (options.namespace === undefined) callbacks.push(callback);
           },
         });
         const result = await callbacks[0]!({ path: filename });
@@ -381,7 +381,7 @@ describe("compiler dev warnings", () => {
   });
 });
 
-const COMPILER_RANGE = ">=1.1.2 <2.0.0";
+const COMPILER_RANGE = ">=1.3.0 <2.0.0";
 
 describe("sinwan-compiler dependency range", () => {
   it("requires sinwan-compiler 1.x", () => {
@@ -438,12 +438,22 @@ describe("Fast Refresh HMR injection", () => {
   });
 });
 
+// Since sinwan-compiler 1.2.0, cross-file metadata narrows an exported
+// component's reactive props to those its callers pass reactive values to;
+// without metadata every prop is treated as reactive (conservative). So when
+// the only caller passes a static value, an `@/` import the analyzer could
+// link leaves `format(props.title)` as a plain read, and an unlinked one keeps
+// the conservative `() => format(...)` getter.
 describe("default tsconfig for the analyzer", () => {
   const CHILD = `import { cc } from "sinwan/component";
 export const Child = cc((props: { title: string }) => <h1>{format(props.title)}</h1>);
 function format(value: string): string { return value; }
 `;
-  const PARENT = `import { cc } from "sinwan/component";
+  const STATIC_PARENT = `import { cc } from "sinwan/component";
+import { Child } from "@/components/Child";
+export const Parent = cc(() => <Child title="Hello" />);
+`;
+  const REACTIVE_PARENT = `import { cc } from "sinwan/component";
 import { signal } from "sinwan/reactivity";
 import { Child } from "@/components/Child";
 export const Parent = cc(() => {
@@ -454,6 +464,7 @@ export const Parent = cc(() => {
 
   async function childOutput(
     configFile: "tsconfig.json" | "jsconfig.json" | null,
+    parentSource = STATIC_PARENT,
   ): Promise<string> {
     const tmpDir = fs.mkdtempSync(path.join(import.meta.dir, ".tmp-"));
     try {
@@ -468,14 +479,14 @@ export const Parent = cc(() => {
       const child = path.join(tmpDir, "src", "components", "Child.tsx");
       const parent = path.join(tmpDir, "src", "pages", "Parent.tsx");
       fs.writeFileSync(child, CHILD);
-      fs.writeFileSync(parent, PARENT);
+      fs.writeFileSync(parent, parentSource);
 
       const plugin = sinwan({ cache: { root: tmpDir }, fastRefresh: false });
       let onLoadFn: ((args: { path: string }) => Promise<{ contents: string }>) | null = null;
       const fakeBuild = {
         config: {},
-        onLoad(_filter: unknown, fn: (args: { path: string }) => Promise<{ contents: string }>) {
-          onLoadFn = fn;
+        onLoad(options: { namespace?: string }, fn: (args: { path: string }) => Promise<{ contents: string }>) {
+          if (options.namespace === undefined) onLoadFn = fn;
         },
       };
       plugin.setup(fakeBuild);
@@ -487,14 +498,22 @@ export const Parent = cc(() => {
   }
 
   it("resolves @/ imports through the root tsconfig.json without tsConfigPath", async () => {
-    expect(await childOutput("tsconfig.json")).toContain("() => format(");
+    const output = await childOutput("tsconfig.json");
+    expect(output).toContain("[format(props.title)]");
+    expect(output).not.toContain("() => format(");
   });
 
   it("falls back to jsconfig.json when there is no tsconfig.json", async () => {
-    expect(await childOutput("jsconfig.json")).toContain("() => format(");
+    const output = await childOutput("jsconfig.json");
+    expect(output).toContain("[format(props.title)]");
+    expect(output).not.toContain("() => format(");
   });
 
-  it("treats the prop as static when no config maps the alias", async () => {
-    expect(await childOutput(null)).not.toContain("() => format(");
+  it("keeps every prop reactive (conservative) when no config maps the alias", async () => {
+    expect(await childOutput(null)).toContain("() => format(");
+  });
+
+  it("keeps a prop reactive through the alias when a caller passes a reactive value", async () => {
+    expect(await childOutput("tsconfig.json", REACTIVE_PARENT)).toContain("() => format(");
   });
 });
