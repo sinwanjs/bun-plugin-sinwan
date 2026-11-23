@@ -1,4 +1,11 @@
-import { transformJSX, AnalyzerCache, IMAGE_QUERY_PATTERN } from "sinwan-compiler";
+import {
+  transformJSX,
+  AnalyzerCache,
+  IMAGE_QUERY_PATTERN,
+  formatDiagnostic,
+  type DiagnosticHandler,
+  type SinwanDiagnostic,
+} from "sinwan-compiler";
 import {
   IMAGE_FILE_PATTERN,
   IMAGE_FILE_PREFIX,
@@ -109,7 +116,19 @@ export interface SinwanBunOptions {
    * images are served from the cache.
    */
   images?: SinwanImageOptions;
+  /**
+   * Receives compiler diagnostics (`SW1xx`) for your source files; files under
+   * `node_modules` are skipped. The lint rules run only with `dev`. Default:
+   * print `file:line:column CODE: message` and its hint with `console.warn`.
+   */
+  onDiagnostic?: DiagnosticHandler;
 }
+
+function printDiagnostic(diagnostic: SinwanDiagnostic): void {
+  console.warn(formatDiagnostic(diagnostic));
+}
+
+function ignoreDiagnostic(): void {}
 
 /**
  * Bracket access so Bun.build cannot fold `process.env.NODE_ENV` into `true`
@@ -281,6 +300,9 @@ export function sinwan(options: SinwanBunOptions = {}) {
             analyzeMetadata: cache ? cache.reactiveProps : undefined,
             resolveImport: cache ? cache.resolve : undefined,
             images: { host: "bun" },
+            onDiagnostic: isNodeModulePath(args.path)
+              ? ignoreDiagnostic
+              : (options.onDiagnostic ?? printDiagnostic),
           });
 
           let contents = transformed.code;

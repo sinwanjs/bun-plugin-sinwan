@@ -2,6 +2,17 @@
 
 All notable changes to **bun-plugin-sinwan** are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com) and bun-plugin-sinwan adheres to [Semantic Versioning](https://semver.org).
 
+## [1.2.0] — Compiler diagnostics
+
+### Added
+
+- **Compiler diagnostics in the dev server** (sinwan-compiler 1.4): JSX that compiles but misbehaves (`SW101` zero-argument function props, `SW102` a new object in `Show`/`Match`/`Key` `when`, `SW103` `value={undefined}`, plus the existing hoisting, derived-local and style warnings) prints as `[Sinwan] file:line:column CODE: message` with a hint. The lint rules run only with `dev`; files under `node_modules` are skipped.
+- **`onDiagnostic` option**: receives each diagnostic instead of printing it.
+
+### Changed
+
+- Requires `sinwan-compiler` `>=1.4.0 <2.0.0`.
+
 ## [1.1.0] — `<Img>` image optimization
 
 ### Added
